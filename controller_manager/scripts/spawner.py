@@ -48,7 +48,24 @@ def wait_for_controller_manager(node, controller_manager, timeout_duration):
 
 
 def is_controller_loaded(node, controller_manager, controller_name):
-    controllers = list_controllers(node, controller_manager).controller
+    controllers = None
+    timeout = node.get_clock().now() + Duration(seconds=20.0)
+    while True:
+        try:
+            controllers = list_controllers(node, controller_manager).controller
+        except RuntimeError as e:
+            node.get_logger().info('Failed to check if controller is already loaded. ' +
+                                   'Reason was: ' + str(e))
+
+        if node.get_clock().now() > timeout:
+            raise RuntimeError('Trying to contact contact service '
+                               '/controller_manager/list_controllers took to long')
+
+        if controllers is not None:
+            break
+
+        node.get_logger().info('Making new attempt to check if controller already is loaded')
+
     return any(c.name == controller_name for c in controllers)
 
 
